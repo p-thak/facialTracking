@@ -1,5 +1,6 @@
 import cv2
 import sys
+import os
 
 # Get user supplied values
 imagePath = sys.argv[1]
