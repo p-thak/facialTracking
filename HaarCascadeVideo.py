@@ -1,26 +1,34 @@
 import numpy as np
 import cv2
-
+import time
+import datetime
 # face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/opencv/data/haarcascades/haarcascade_frontalface_default.xml')
 # eye_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/opencv/data/haarcascades/haarcascade_eye.xml')
 
 # this is the cascade we just made. Call what you want
-new_face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/faceTracking/data/cascade.xml')
+new_face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/facialTracking/data/cascade.xml')
 
-cap = cv2.VideoCapture('/Users/clarkpathakis/PycharmProjects/faceTracking/pos/out.mp4')
+cap = cv2.VideoCapture('/Users/clarkpathakis/PycharmProjects/facialTracking/pos/out.mp4')
 
 while 1:
     ret, img = cap.read()
+    # print(ret)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
     # add this
     # image, reject levels level weights.
-    new_faces = new_face_cascade.detectMultiScale(gray, 50, 50)
+    new_faces = new_face_cascade.detectMultiScale(gray)
 
     # add this
     for (x, y, w, h) in new_faces:
         cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0), 2)
+        # str(datetime.datetime.now())
+        # st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+        line = str(datetime.datetime.now())+'\t'+str(x)+'\t'+str(y)+'\t'+str(w)+'\t'+str(h)+'\n'
+        with open('time_series.txt', 'a') as f:
+            f.write(line)
 
     # for (x, y, w, h) in faces:
     #     cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
