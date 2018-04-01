@@ -9,6 +9,46 @@ frame = None
 roiPts = []
 inputMode = False
 
+predict = []
+measure = []
+last_measure = current_measure = np.array((2,1),np.float32)
+last_predict = current_predict = np.zeros((2,1),np.float32)
+frame = np.ndarray
+# measure = np.array((2,1),np.float32)
+
+
+
+
+def kalmanSetup():
+    kalman = cv2.KalmanFilter(4,2)
+    kalman.measurementMatrix = np.array([[1,0,0,0],[0,1,0,0]],np.float32)
+    kalman.transitionMatrix = np.array([[1,0,1,0],[0,1,0,1],[0,0,1,0],[0,0,0,1]],np.float32)
+    kalman.processNoiseCov = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],np.float32) * 0.03
+    return kalman
+
+kalman = kalmanSetup()
+
+def applyKalmanFilter(x, y):
+    global frame,last_measure,current_measure,measure,current_predict,last_predict,kalman
+    last_predict=current_predict
+    last_measure=current_measure
+    predict.append([int(last_predict[0]),int(last_predict[1])])
+    measure.append([int(last_predict[0]),int(last_predict[1])])
+    current_measure=np.array([[np.float32(x)],[np.float32(y)]])
+    kalman.correct(current_measure)
+    current_predict = kalman.predict()
+    lmx,lmy=last_measure[0],last_measure[1]
+    cmx,cmy=current_measure[0],current_measure[1]
+    cpx,cpy=current_predict[0],current_predict[1]
+    lpx,lpy=last_predict[0],last_predict[1]
+
+    cv2.line(frame, (lmx,lmy), (cmx,cmy), (0,100,0), 2)
+    cv2.line(frame, (lpx,lpy), (cpx,cpy), (0,0,200), 2)
+    # print(current_measure)
+    # print(current_predict)
+
+
+
 def selectROI(event, x, y, flags, param):
     # grab the reference to the current frame, list of ROI
     # points and whether or not it is ROI selection mode
@@ -46,6 +86,7 @@ def main():
 
     cv2.namedWindow("frame")
     cv2.setMouseCallback("frame", selectROI)
+    kalman = kalmanSetup()
 
     # initialize the termination criteria for cam shift, indicating
     # a maximum of ten iterations or movement by a least one pixel
@@ -78,6 +119,7 @@ def main():
             # points to a bounding box, and then draw them
             (r, roiBox) = cv2.CamShift(backProj, roiBox, termination)
             pts = np.int0(cv2.cv2.boxPoints(r))
+            applyKalmanFilter(roiBox[0],roiBox[1])
             cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
 
         # show the frame and record if the user presses a key
@@ -115,7 +157,7 @@ def main():
             # compute a HSV histogram for the ROI and store the
             # bounding box
             roiHist = cv2.calcHist([roi], [0], None, [16], [0, 180])
-             roiHist = cv2.normalize(roiHist, roiHist, 0, 255, cv2.NORM_MINMAX)
+            roiHist = cv2.normalize(roiHist, roiHist, 0, 255, cv2.NORM_MINMAX)
             roiBox = (tl[0], tl[1], br[0], br[1])
 
         # if the 'q' key is pressed, stop the loop

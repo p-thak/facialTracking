@@ -12,6 +12,8 @@ predict = []
 measure = []
 last_measure = current_measure = np.array((2,1),np.float32)
 last_predict = current_predict = np.zeros((2,1),np.float32)
+frame = np.ndarray
+# measure = np.array((2,1),np.float32)
 
 def kalmanSetup():
     kalman = cv2.KalmanFilter(4,2)
@@ -20,7 +22,25 @@ def kalmanSetup():
     kalman.processNoiseCov = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],np.float32) * 0.03
     return kalman
 
-def move(x,y):
+def applyCamshiftFilter(x,y,w,h,termination):
+    roi = frame[y:y+h,x:x+w]
+    roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
+    roiHist = cv2.calcHist([roi],[0],None,[16],[0,180])
+    roiHist = cv2.normalize(roiHist,roiHist, 0 ,255, cv2.NORM_MINMAX)
+    roiBox = (x,y,x+w,y+h)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    backProj = cv2.calcBackProject([hsv], [0], roiHist, [0,180], 1)
+
+    (r, roiBox) = cv2.CamShift(backProj, roiBox, termination)
+    pts = np.int0(cv2.cv2.boxPoints(r))
+    cv2.polylines(frame, [pts], True, (0,255,0), 2)
+
+
+
+# applies the Kalman filter
+
+def applyKalmanFilter(x, y):
     global frame,last_measure,current_measure,measure,current_predict,last_predict
     last_predict=current_predict
     last_measure=current_measure
@@ -33,31 +53,34 @@ def move(x,y):
     cmx,cmy=current_measure[0],current_measure[1]
     cpx,cpy=current_predict[0],current_predict[1]
     lpx,lpy=last_predict[0],last_predict[1]
-    cv2.line(frame, (lmx,lmy), (cmx,cmy), (0,100,0))
-    cv2.line(frame, (lpx,lpy), (cpx,cpy), (0,0,200))
-    print(current_predict)
+
+    cv2.line(frame, (lmx,lmy), (cmx,cmy), (0,100,0), 2)
+    cv2.line(frame, (lpx,lpy), (cpx,cpy), (0,0,200), 2)
+
 
 
 time_count = 0
 # this is the cascade we just made. Call what you want
-new_face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/facialTracking/data/cascade.xml')
+new_face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/facialTracking/smallData/cascade.xml')
 
 kalman = kalmanSetup()
 # cap = cv2.VideoCapture('/Users/clarkpathakis/PycharmProjects/facialTracking/pos/out.mp4')
 cap = cv2.VideoCapture(0)
-scaling_factor = 1
+termination = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1)
+# scaling_factor = 1
 start = time.time()
-
-
-
+roiBox = None
 # forcc = cv2.VideoWriter_fourcc(*'MJPG')
 # out = cv2.VideoWriter('output.avi', forcc, 20.0, (1920, 1080))
 
 while 1:
     ret, img = cap.read()
-    frame = cv2.resize(img, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA)
+    # frame = cv2.resize(img, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA)
+    frame = img
 
-    # print(ret)
+    if not ret:
+        break
+
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
@@ -65,29 +88,64 @@ while 1:
     # image, reject levels level weights.
     # new_faces = new_face_cascade.detectMultiScale(gray)
 
-    face_rects = new_face_cascade.detectMultiScale(gray, 1.3, 5)
+    # face_rects = new_face_cascade.detectMultiScale(gray, 1.3, 5)
+    face_rects = new_face_cascade.detectMultiScale(gray, 1.8, 9)
+    if roiBox is not None:
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        backProj = cv2.calcBackProject([hsv],[0], roiHist, [0,180], 1)
 
-    # add this
+        (r, roiBox) = cv2.CamShift(backProj, roiBox, termination)
+        pts = np.int0(cv2.cv2.boxPoints(r))
+        applyKalmanFilter(roiBox[0], roiBox[1])
+        cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
+    else:
+        for (x, y, w, h) in face_rects:
+            # takes a smaller portion out of the facial recognition bounding box and then has those points
+            # for the region of interest, ready to apply kalman filter and CAMshift filter with next frame
+            remainder = int(w * .35)
+            remainder_y = int(h * .35)
+            new_w = int(w * .65)
+            new_h = int(h * .65)
+            new_x = int(x + (remainder / 2))
+            new_y = int(y + (remainder_y / 2))
+            top_left = (new_x,new_y)
+            bottom_right = (new_x+new_w, new_y+new_h)
+
+            orig = frame.copy()
+            roi = orig[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+            roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
+            # compute a HSV histogram for the ROI and store the
+            # bounding boxi
+            roiHist = cv2.calcHist([roi], [0], None, [16], [0, 180])
+            roiHist = cv2.normalize(roiHist, roiHist, 0, 255, cv2.NORM_MINMAX)
+            roiBox = (x, y, bottom_right[0], bottom_right[1])
+            # roiBox = (top_left[0], top_left[1], bottom_right[0], bottom_right[1])
+
+
+    # This shows a bounding box just as a reference for where the facial recognition is.
+
     for (x, y, w, h) in face_rects:
-        cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 3)
+        # applyCamshiftFilter(x,y,w,h,termination)
+        # applyKalmanFilter(x, y)
+        # 85%
+        remainder = int(w*.35)
+        remainder_y = int(h * .35)
+        new_w = int(w*.65)
+        new_h = int(h * .65)
+        new_x = int(x+(remainder/2))
+        new_y = int(y + (remainder_y / 2))
+        cv2.line(img, (x,y),(new_x,new_y+new_h), (0,0,255), 3)
+        cv2.line(img, (x+w,y),(x,y), (0,0,255), 3)
+        cv2.line(img, (x+w,y), (new_x+new_w, new_y+new_h), (0,0,255), 3)
+        cv2.line(img, (new_x, new_y+new_h), (new_x+new_w, new_y+new_h), (0,0,255), 3)
+        # cv2.rectangle(img, (new_x, y), (new_x+new_w, new_y+new_h), (255, 0, 0), 3)
+        # cv2.rectangle(img, (x, y), (x+w, y+h), (255, 255, 0), 3)
+
         font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img,'X,Y is : %s, %s' % (x,y),(x,y), font, 1, (255,255,255),2)
-        move(x,y)
+        cv2.putText(img,'X,Y is : %s, %s' % (x,y),(x,y), font, 1, (255,255,0),2)
 
 
-
-
-
-        # line = str(datetime.datetime.now())+'\t'+str(x)+'\t'+str(y)+'\t'+str(w)+'\t'+str(h)+'\n'
-        # pickle.dump(line, open("pickle_data.p", "wb"))
-
-
-
-
-    # for i, p in iter(Head.items()):
-    #     print("%s, %s", i, p)
-    #     p.update(img)
-    #     print(p.update(img))
 
 
     # out.write(img)
