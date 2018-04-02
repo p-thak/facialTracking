@@ -2,11 +2,10 @@ import datetime as datetime
 import numpy as np
 import cv2
 import time
+import os
 import datetime
 import pickle
 import itertools
-# face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/opencv/data/haarcascades/haarcascade_frontalface_default.xml')
-# eye_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/opencv/data/haarcascades/haarcascade_eye.xml')
 
 predict = []
 measure = []
@@ -61,17 +60,18 @@ def applyKalmanFilter(x, y):
 
 time_count = 0
 # this is the cascade we just made. Call what you want
-new_face_cascade = cv2.CascadeClassifier('/Users/clarkpathakis/PycharmProjects/facialTracking/smallData/cascade.xml')
+dir_path = os.path.dirname(os.path.realpath(__file__))
+new_face_cascade = cv2.CascadeClassifier(dir_path+'/smallData/cascade.xml')
 
 kalman = kalmanSetup()
+
 # cap = cv2.VideoCapture('/Users/clarkpathakis/PycharmProjects/facialTracking/pos/out.mp4')
 cap = cv2.VideoCapture(0)
 termination = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1)
-# scaling_factor = 1
 start = time.time()
 roiBox = None
 # forcc = cv2.VideoWriter_fourcc(*'MJPG')
-out = cv2.VideoWriter('output.avi', -1, 20.0, (1920, 1080))
+# out = cv2.VideoWriter('output.mp4', -1, 20.0, (640, 480))
 
 while 1:
     ret, img = cap.read()
@@ -82,14 +82,10 @@ while 1:
         break
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-    # add this
     # image, reject levels level weights.
-    # new_faces = new_face_cascade.detectMultiScale(gray)
-
-    # face_rects = new_face_cascade.detectMultiScale(gray, 1.3, 5)
-    face_rects = new_face_cascade.detectMultiScale(gray, 1.8, 9)
+    # The scale factor and minNeighbors need to be adjusted according to lighting and background.
+    face_rects = new_face_cascade.detectMultiScale(gray, 1.9, 9)
     if roiBox is not None:
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         backProj = cv2.calcBackProject([hsv],[0], roiHist, [0,180], 1)
@@ -141,15 +137,14 @@ while 1:
     #     cv2.line(img, (new_x, new_y+new_h), (new_x+new_w, new_y+new_h), (0,0,255), 3)
     #     # cv2.rectangle(img, (new_x, y), (new_x+new_w, new_y+new_h), (255, 0, 0), 3)
     #     # cv2.rectangle(img, (x, y), (x+w, y+h), (255, 255, 0), 3)
-
-        # font = cv2.FONT_HERSHEY_SIMPLEX
-        # cv2.putText(img,'X,Y is : %s, %s' % (x,y),(x,y), font, 1, (255,255,0),2)
-
+    #     font = cv2.FONT_HERSHEY_SIMPLEX
+    #     cv2.putText(img,'X,Y is : %s, %s' % (x,y),(x,y), font, 1, (255,255,0),2)
 
 
 
-    out.write(img)
+
     cv2.imshow('img', img)
+    # out.write(outFrame)
     c = cv2.waitKey(1)
     end = time.time()
 
