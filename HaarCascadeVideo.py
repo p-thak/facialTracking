@@ -71,7 +71,7 @@ termination = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1)
 start = time.time()
 roiBox = None
 # forcc = cv2.VideoWriter_fourcc(*'MJPG')
-# out = cv2.VideoWriter('output.avi', forcc, 20.0, (1920, 1080))
+out = cv2.VideoWriter('output.avi', -1, 20.0, (1920, 1080))
 
 while 1:
     ret, img = cap.read()
@@ -125,30 +125,30 @@ while 1:
 
     # This shows a bounding box just as a reference for where the facial recognition is.
 
-    for (x, y, w, h) in face_rects:
-        # applyCamshiftFilter(x,y,w,h,termination)
-        # applyKalmanFilter(x, y)
-        # 85%
-        remainder = int(w*.35)
-        remainder_y = int(h * .35)
-        new_w = int(w*.65)
-        new_h = int(h * .65)
-        new_x = int(x+(remainder/2))
-        new_y = int(y + (remainder_y / 2))
-        cv2.line(img, (x,y),(new_x,new_y+new_h), (0,0,255), 3)
-        cv2.line(img, (x+w,y),(x,y), (0,0,255), 3)
-        cv2.line(img, (x+w,y), (new_x+new_w, new_y+new_h), (0,0,255), 3)
-        cv2.line(img, (new_x, new_y+new_h), (new_x+new_w, new_y+new_h), (0,0,255), 3)
-        # cv2.rectangle(img, (new_x, y), (new_x+new_w, new_y+new_h), (255, 0, 0), 3)
-        # cv2.rectangle(img, (x, y), (x+w, y+h), (255, 255, 0), 3)
+    # for (x, y, w, h) in face_rects:
+    #     # applyCamshiftFilter(x,y,w,h,termination)
+    #     # applyKalmanFilter(x, y)
+    #     # 85%
+    #     remainder = int(w*.35)
+    #     remainder_y = int(h * .35)
+    #     new_w = int(w*.65)
+    #     new_h = int(h * .65)
+    #     new_x = int(x+(remainder/2))
+    #     new_y = int(y + (remainder_y / 2))
+    #     cv2.line(img, (x,y),(new_x,new_y+new_h), (0,0,255), 3)
+    #     cv2.line(img, (x+w,y),(x,y), (0,0,255), 3)
+    #     cv2.line(img, (x+w,y), (new_x+new_w, new_y+new_h), (0,0,255), 3)
+    #     cv2.line(img, (new_x, new_y+new_h), (new_x+new_w, new_y+new_h), (0,0,255), 3)
+    #     # cv2.rectangle(img, (new_x, y), (new_x+new_w, new_y+new_h), (255, 0, 0), 3)
+    #     # cv2.rectangle(img, (x, y), (x+w, y+h), (255, 255, 0), 3)
 
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img,'X,Y is : %s, %s' % (x,y),(x,y), font, 1, (255,255,0),2)
-
-
+        # font = cv2.FONT_HERSHEY_SIMPLEX
+        # cv2.putText(img,'X,Y is : %s, %s' % (x,y),(x,y), font, 1, (255,255,0),2)
 
 
-    # out.write(img)
+
+
+    out.write(img)
     cv2.imshow('img', img)
     c = cv2.waitKey(1)
     end = time.time()
