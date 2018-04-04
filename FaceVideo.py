@@ -109,10 +109,9 @@ faceFound = False
 while True:
     img = cap.read()
     # frame = cv2.resize(img, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA)
-    # frame = imutils.resize(img, width=400)
+    frame = imutils.resize(img, width=600)
 
-
-    frame = img
+    # frame = img
 
     # grab the frame dimensions and convert it to a blob
     (h, w) = frame.shape[:2]
@@ -141,10 +140,26 @@ while True:
         box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
         (startX, startY, endX, endY) = box.astype("int")
 
+        newEndX = endX
+
         # creat CmashiftTracker class for each positive detection if on first frame
         if firstFrame:
+
+            # get w and h
+            # get             remainder = int(w * .35)
+            h = endY - startY
+            w = endX - startX
+            remainder = int(w * .35)
+            remainder_y = int(h * .35)
+            new_w = int(w * .65)
+            new_h = int(h * .65)
+            new_x = int(startX + (remainder / 2))
+            new_y = int(startY + (remainder_y / 2))
+            top_left = (new_x,new_y)
+            bottom_right = (new_x+new_w, new_y+new_h)
+
             tracker = CamshiftTracker()
-            tracker.setCurrentRect((startX, startY, endX, endY))
+            tracker.setCurrentRect(frame.copy(), (startX, startY, bottom_right[0], bottom_right[1]))
             camList.append(tracker)
             firstFrame = False
 
@@ -165,6 +180,11 @@ while True:
             (r, roiBox) = cam.trackCurrentRect()
             pts = np.int0(cv2.cv2.boxPoints(r))
             applyKalmanFilter(roiBox[0], roiBox[1])
+
+            # text = "{:.2f}%".format(confidence * 100)
+            # cv2.putText(frame, text, (roiBox[0], roiBox[1]+10),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
+
             cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
 
     if not firstFrame:
